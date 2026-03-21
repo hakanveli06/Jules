@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentListId = null;
     let todos = [];
     let currentFilter = 'all';
-    const API_URL = '/api/lists';
+
+    const LOCAL_STORAGE_KEY = 'todo_lists_data';
 
     // Initialize App
     async function init() {
@@ -53,25 +54,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Backend API Calls
+    // Data Management
     async function loadAllLists() {
-        try {
-            updateSyncStatus('Yükleniyor...', 'saving');
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            allLists = data.lists || {};
-            renderSidebarLists();
-            updateSyncStatus('Güncel', 'success');
-        } catch (error) {
-            console.error('Veriler yüklenemedi:', error);
-            updateSyncStatus('Bağlantı hatası', 'error');
+        updateSyncStatus('Yükleniyor...', 'saving');
+
+        const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
+
+        // Migrate old 'todos_fallback' if present and new key is empty
+        const fallbackData = localStorage.getItem('todos_fallback');
+        if (!localData && fallbackData) {
+            allLists = JSON.parse(fallbackData);
+            localStorage.setItem(LOCAL_STORAGE_KEY, fallbackData);
+        } else if (localData) {
+            try {
+                allLists = JSON.parse(localData).lists || {};
+            } catch (e) {
+                allLists = {};
+            }
+        } else {
+            allLists = {};
         }
+
+        updateSyncStatus('Kayıtlı', 'success');
+        renderSidebarLists();
     }
 
     async function saveListToServer() {
         if (!currentListId) return;
 
-        const listData = {
+        // Update local memory
+        allLists[currentListId] = {
             id: currentListId,
             name: allLists[currentListId].name,
             todos: todos
@@ -79,30 +91,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             updateSyncStatus('Kaydediliyor...', 'saving');
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(listData)
-            });
-            const data = await response.json();
-            if (data.success) {
-                allLists[currentListId] = data.list;
-                updateSyncStatus('Kaydedildi', 'success');
-                renderSidebarLists(); // Update any counts if needed
-            }
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+
+            // Provide a tiny visual delay so user sees "Saving..."
+            setTimeout(() => {
+                updateSyncStatus('Kayıtlı', 'success');
+                renderSidebarLists();
+            }, 300);
+
         } catch (error) {
-            console.error('Kayıt edilemedi:', error);
-            updateSyncStatus('Kayıt hatası', 'error');
-            // Fallback to localstorage just in case
-            localStorage.setItem('todos_fallback', JSON.stringify(todos));
+            console.error('Local storage quota exceeded or unavailable:', error);
+            updateSyncStatus('Hafıza dolu', 'error');
         }
     }
 
     async function deleteListFromServer(id) {
+        updateSyncStatus('Siliniyor...', 'saving');
+        delete allLists[id];
+
         try {
-            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            delete allLists[id];
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+
             renderSidebarLists();
+            updateSyncStatus('Kayıtlı', 'success');
 
             // Switch to another list if active is deleted
             if (currentListId === id) {
@@ -113,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
-            console.error('Liste silinemedi:', error);
+            console.error('Silinirken hata oluştu:', error);
+            updateSyncStatus('Silme hatası', 'error');
         }
     }
 
