@@ -11,11 +11,35 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="header-top">
-                <h1>Yapılacaklar Listesi</h1>
-                <div class="theme-switch-wrapper">
+    <div class="app-layout">
+        <!-- Sidebar for Lists -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-list"></i> Kayıtlı Listeler</h2>
+                <button id="mobile-menu-close" class="mobile-only"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="new-list-section">
+                <input type="text" id="new-list-name" placeholder="Yeni liste adı...">
+                <button id="create-list-btn"><i class="fas fa-plus"></i> Yeni Liste</button>
+            </div>
+
+            <ul id="saved-lists" class="saved-lists">
+                <!-- Lists will be populated here by JS -->
+                <li class="empty-msg">Henüz kayıtlı liste yok.</li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <header>
+                    <div class="header-top">
+                        <div class="title-section">
+                            <button id="mobile-menu-open" class="mobile-only"><i class="fas fa-bars"></i></button>
+                            <h1 id="current-list-title">Yapılacaklar Listesi</h1>
+                        </div>
+                        <div class="theme-switch-wrapper">
                     <span id="theme-text">Temayı seçin:</span>
                     <label class="theme-switch" for="checkbox">
                         <input type="checkbox" id="checkbox" />
@@ -45,10 +69,17 @@
             <!-- Todo items will be inserted here by JavaScript -->
         </ul>
 
-        <div class="actions">
-            <button id="clear-completed">Tamamlananları Temizle</button>
-            <button id="clear-all">Tümünü Temizle</button>
-        </div>
+                <div class="actions">
+                    <button id="clear-completed">Tamamlananları Temizle</button>
+                    <button id="clear-all">Tümünü Temizle</button>
+                </div>
+
+                <div class="sync-status">
+                    <span id="sync-icon"><i class="fas fa-cloud-upload-alt"></i></span>
+                    <span id="sync-text">Bulut ile senkronize edildi</span>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script src="script.js"></script>

@@ -11,12 +11,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const completedTasksSpan = document.getElementById('completed-tasks');
     const themeToggle = document.getElementById('checkbox');
 
+    // Sidebar & Sync Elements
+    const sidebar = document.querySelector('.sidebar');
+    const mobileMenuOpen = document.getElementById('mobile-menu-open');
+    const mobileMenuClose = document.getElementById('mobile-menu-close');
+    const createListBtn = document.getElementById('create-list-btn');
+    const newListNameInput = document.getElementById('new-list-name');
+    const savedListsContainer = document.getElementById('saved-lists');
+    const currentListTitle = document.getElementById('current-list-title');
+    const syncIcon = document.getElementById('sync-icon');
+    const syncText = document.getElementById('sync-text');
+
     // App State
-    let todos = JSON.parse(localStorage.getItem('todos')) || [];
+    let allLists = {};
+    let currentListId = null;
+    let todos = [];
     let currentFilter = 'all';
+    const API_URL = '/api/lists';
 
     // Initialize App
-    function init() {
+    async function init() {
         // Load theme preference
         const currentTheme = localStorage.getItem('theme');
         if (currentTheme) {
@@ -26,11 +40,146 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        await loadAllLists();
+
+        // Load last active list or create a default one
+        const lastActiveListId = localStorage.getItem('lastActiveListId');
+        if (lastActiveListId && allLists[lastActiveListId]) {
+            switchList(lastActiveListId);
+        } else if (Object.keys(allLists).length > 0) {
+            switchList(Object.keys(allLists)[0]);
+        } else {
+            createDefaultList();
+        }
+    }
+
+    // Backend API Calls
+    async function loadAllLists() {
+        try {
+            updateSyncStatus('Yükleniyor...', 'saving');
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            allLists = data.lists || {};
+            renderSidebarLists();
+            updateSyncStatus('Güncel', 'success');
+        } catch (error) {
+            console.error('Veriler yüklenemedi:', error);
+            updateSyncStatus('Bağlantı hatası', 'error');
+        }
+    }
+
+    async function saveListToServer() {
+        if (!currentListId) return;
+
+        const listData = {
+            id: currentListId,
+            name: allLists[currentListId].name,
+            todos: todos
+        };
+
+        try {
+            updateSyncStatus('Kaydediliyor...', 'saving');
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(listData)
+            });
+            const data = await response.json();
+            if (data.success) {
+                allLists[currentListId] = data.list;
+                updateSyncStatus('Kaydedildi', 'success');
+                renderSidebarLists(); // Update any counts if needed
+            }
+        } catch (error) {
+            console.error('Kayıt edilemedi:', error);
+            updateSyncStatus('Kayıt hatası', 'error');
+            // Fallback to localstorage just in case
+            localStorage.setItem('todos_fallback', JSON.stringify(todos));
+        }
+    }
+
+    async function deleteListFromServer(id) {
+        try {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            delete allLists[id];
+            renderSidebarLists();
+
+            // Switch to another list if active is deleted
+            if (currentListId === id) {
+                if (Object.keys(allLists).length > 0) {
+                    switchList(Object.keys(allLists)[0]);
+                } else {
+                    createDefaultList();
+                }
+            }
+        } catch (error) {
+            console.error('Liste silinemedi:', error);
+        }
+    }
+
+    // List Management Logic
+    function createDefaultList() {
+        const id = 'default-' + Date.now();
+        allLists[id] = { id: id, name: 'Genel', todos: [] };
+        switchList(id);
+    }
+
+    function handleCreateList() {
+        const name = newListNameInput.value.trim();
+        if (!name) {
+            alert('Lütfen bir liste adı girin.');
+            return;
+        }
+
+        const id = 'list-' + Date.now();
+        allLists[id] = { id: id, name: name, todos: [] };
+        newListNameInput.value = '';
+        switchList(id);
+
+        // Close sidebar on mobile after creating
+        sidebar.classList.remove('open');
+    }
+
+    function switchList(id) {
+        currentListId = id;
+        todos = allLists[id].todos || [];
+        currentListTitle.textContent = allLists[id].name;
+        localStorage.setItem('lastActiveListId', id);
+
+        renderSidebarLists();
         renderTodos();
         updateStats();
+
+        // Auto-save the list creation if it's new
+        saveListToServer();
+    }
+
+    function updateSyncStatus(text, status) {
+        syncText.textContent = text;
+        const syncStatusDiv = syncText.parentElement;
+        syncStatusDiv.className = 'sync-status ' + status;
+
+        if (status === 'saving') {
+            syncIcon.innerHTML = '<i class="fas fa-sync fa-spin"></i>';
+        } else if (status === 'success') {
+            syncIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+        } else {
+            syncIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        }
     }
 
     // Event Listeners
+
+    // Sidebar Mobile Toggles
+    mobileMenuOpen.addEventListener('click', () => sidebar.classList.add('open'));
+    mobileMenuClose.addEventListener('click', () => sidebar.classList.remove('open'));
+
+    // Sidebar List Actions
+    createListBtn.addEventListener('click', handleCreateList);
+    newListNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleCreateList();
+    });
+
     themeToggle.addEventListener('change', switchTheme);
 
     function switchTheme(e) {
@@ -167,6 +316,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Sidebar Rendering
+    function renderSidebarLists() {
+        savedListsContainer.innerHTML = '';
+
+        const listKeys = Object.keys(allLists);
+        if (listKeys.length === 0) {
+            savedListsContainer.innerHTML = '<li class="empty-msg">Henüz kayıtlı liste yok.</li>';
+            return;
+        }
+
+        listKeys.forEach(key => {
+            const list = allLists[key];
+            const li = document.createElement('li');
+            if (key === currentListId) li.classList.add('active');
+
+            li.innerHTML = `
+                <div class="list-name">
+                    <i class="fas fa-list-ul"></i>
+                    <span>${escapeHTML(list.name)}</span>
+                </div>
+                <button class="delete-list-btn" title="Listeyi Sil">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            // Switch list on click
+            li.querySelector('.list-name').addEventListener('click', () => {
+                switchList(key);
+                sidebar.classList.remove('open');
+            });
+
+            // Delete list on click
+            li.querySelector('.delete-list-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`"${list.name}" listesini tamamen silmek istediğinize emin misiniz?`)) {
+                    deleteListFromServer(key);
+                }
+            });
+
+            savedListsContainer.appendChild(li);
+        });
+    }
+
     // Helper Functions
     function escapeHTML(str) {
         return str.replace(/[&<>'"]/g,
@@ -199,7 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveTodos() {
-        localStorage.setItem('todos', JSON.stringify(todos));
+        // Instead of local storage, trigger the backend sync
+        saveListToServer();
     }
 
     function updateStats() {
