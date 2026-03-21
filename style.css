@@ -279,13 +279,83 @@ li.completed .task-text {
     width: 100%;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
+    body {
+        padding: 15px 10px;
+    }
+
+    .container {
+        padding: 20px 15px;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
     .input-section {
         flex-direction: column;
     }
 
+    input[type="text"],
+    input[type="date"] {
+        width: 100%;
+        font-size: 16px; /* prevents iOS auto-zoom on focus */
+        padding: 14px 12px;
+    }
+
     #add-btn {
-        padding: 12px;
+        padding: 14px;
         justify-content: center;
+        font-size: 16px;
+    }
+
+    .filters {
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        flex: 1;
+        text-align: center;
+        padding: 10px 8px;
+        font-size: 13px;
+    }
+
+    li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .task-info {
+        width: 100%;
+    }
+
+    .task-actions {
+        width: 100%;
+        justify-content: flex-end;
+        border-top: 1px solid var(--border-color);
+        padding-top: 8px;
+    }
+
+    .edit-btn, .delete-btn {
+        padding: 8px 12px;
+        font-size: 18px;
+    }
+
+    .actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #clear-completed, #clear-all {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
     }
 }
