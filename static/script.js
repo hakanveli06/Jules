@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let todos = [];
     let currentFilter = 'all';
 
+    const API_URL = '/api/lists';
     const LOCAL_STORAGE_KEY = 'todo_lists_data';
 
     // Initialize App
@@ -56,76 +57,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Data Management
     async function loadAllLists() {
-        updateSyncStatus('Yükleniyor...', 'saving');
+        updateSyncStatus('Sunucudan Yükleniyor...', 'saving');
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Ağ hatası');
+            const data = await response.json();
+            allLists = data.lists || {};
 
-        const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
-
-        // Migrate old 'todos_fallback' if present and new key is empty
-        const fallbackData = localStorage.getItem('todos_fallback');
-        if (!localData && fallbackData) {
-            allLists = JSON.parse(fallbackData);
-            localStorage.setItem(LOCAL_STORAGE_KEY, fallbackData);
-        } else if (localData) {
-            try {
-                allLists = JSON.parse(localData).lists || {};
-            } catch (e) {
+            // Cache locally in case of future offline
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+            updateSyncStatus('Güncel (Bulut)', 'success');
+        } catch (error) {
+            console.error('Sunucu bağlantısı kurulamadı, yerel depolama kullanılıyor:', error);
+            const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (localData) {
+                try {
+                    allLists = JSON.parse(localData).lists || {};
+                } catch (e) {
+                    allLists = {};
+                }
+            } else {
                 allLists = {};
             }
-        } else {
-            allLists = {};
+            updateSyncStatus('Çevrimdışı (Yerel)', 'warning');
         }
-
-        updateSyncStatus('Kayıtlı', 'success');
         renderSidebarLists();
     }
 
     async function saveListToServer() {
         if (!currentListId) return;
 
-        // Update local memory
-        allLists[currentListId] = {
+        const listData = {
             id: currentListId,
             name: allLists[currentListId].name,
             todos: todos
         };
 
+        updateSyncStatus('Kaydediliyor...', 'saving');
+
+        // Always update local storage as a fallback/cache immediately
+        allLists[currentListId] = listData;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+
         try {
-            updateSyncStatus('Kaydediliyor...', 'saving');
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(listData)
+            });
+            const data = await response.json();
 
-            // Provide a tiny visual delay so user sees "Saving..."
-            setTimeout(() => {
-                updateSyncStatus('Kayıtlı', 'success');
+            if (data.success) {
+                updateSyncStatus('Kayıtlı (Bulut)', 'success');
                 renderSidebarLists();
-            }, 300);
-
+            } else {
+                throw new Error(data.error || 'Server error');
+            }
         } catch (error) {
-            console.error('Local storage quota exceeded or unavailable:', error);
-            updateSyncStatus('Hafıza dolu', 'error');
+            console.error('Kayıt edilemedi:', error);
+            updateSyncStatus('Sadece Yerelde Kayıtlı', 'warning');
+            renderSidebarLists();
         }
     }
 
     async function deleteListFromServer(id) {
         updateSyncStatus('Siliniyor...', 'saving');
+
+        // Remove locally immediately for snappy UI
         delete allLists[id];
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
 
         try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ lists: allLists }));
+            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            const data = await response.json();
 
-            renderSidebarLists();
-            updateSyncStatus('Kayıtlı', 'success');
-
-            // Switch to another list if active is deleted
-            if (currentListId === id) {
-                if (Object.keys(allLists).length > 0) {
-                    switchList(Object.keys(allLists)[0]);
-                } else {
-                    createDefaultList();
-                }
+            if (data.success) {
+                updateSyncStatus('Kayıtlı (Bulut)', 'success');
+            } else {
+                throw new Error('Server delete failed');
             }
         } catch (error) {
-            console.error('Silinirken hata oluştu:', error);
-            updateSyncStatus('Silme hatası', 'error');
+            console.error('Liste sunucudan silinemedi:', error);
+            updateSyncStatus('Çevrimdışı (Yerel)', 'warning');
+        }
+
+        renderSidebarLists();
+
+        // Switch to another list if active is deleted
+        if (currentListId === id) {
+            if (Object.keys(allLists).length > 0) {
+                switchList(Object.keys(allLists)[0]);
+            } else {
+                createDefaultList();
+            }
         }
     }
 

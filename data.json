@@ -1,0 +1,33 @@
+{
+    "lists": {
+        "default-1774133338532": {
+            "id": "default-1774133338532",
+            "name": "Genel",
+            "todos": []
+        },
+        "list-1774133338884": {
+            "id": "list-1774133338884",
+            "name": "Online Liste",
+            "todos": [
+                {
+                    "id": "1774133338995",
+                    "text": "Market alışverişi",
+                    "date": "",
+                    "completed": false
+                }
+            ]
+        },
+        "list-1774133598251": {
+            "id": "list-1774133598251",
+            "name": "Online Liste",
+            "todos": [
+                {
+                    "id": "1774133598349",
+                    "text": "Market alışverişi",
+                    "date": "",
+                    "completed": false
+                }
+            ]
+        }
+    }
+}
