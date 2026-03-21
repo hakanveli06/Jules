@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearAllBtn = document.getElementById('clear-all');
     const totalTasksSpan = document.getElementById('total-tasks');
     const completedTasksSpan = document.getElementById('completed-tasks');
+    const themeToggle = document.getElementById('checkbox');
 
     // App State
     let todos = JSON.parse(localStorage.getItem('todos')) || [];
@@ -16,11 +17,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize App
     function init() {
+        // Load theme preference
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') {
+                themeToggle.checked = true;
+            }
+        }
+
         renderTodos();
         updateStats();
     }
 
     // Event Listeners
+    themeToggle.addEventListener('change', switchTheme);
+
+    function switchTheme(e) {
+        if (e.target.checked) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
     addBtn.addEventListener('click', addTodo);
     todoInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addTodo();
