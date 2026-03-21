@@ -1,0 +1,17 @@
+{
+    "name": "Yapılacaklar Listesi",
+    "short_name": "Todo List",
+    "description": "Kapsamlı yapılacaklar listesi uygulaması",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#f5f7fa",
+    "theme_color": "#4a90e2",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
