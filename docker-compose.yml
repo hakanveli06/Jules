@@ -1,0 +1,9 @@
+services:
+  jules:
+    build: .
+    # Konteyner ismine güvenmiyoruz, servis adı 'jules' üzerinden gideceğiz.
+    restart: always
+    ports:
+      # Yerel ağdan (192.168.1.222:5050) erişebilmen için 5050 portunu dışarı açıyoruz.
+      # İçeride Gunicorn 5000 portunda çalışıyor.
+      - '5050:5000'
